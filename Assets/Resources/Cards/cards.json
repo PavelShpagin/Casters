@@ -1,0 +1,216 @@
+[
+  {
+    "title": "Sacrifice Doll",
+    "description": "Summon a LvL2 from your deck, equip it. Equip: Can't attack/block.",
+    "cost": "Free Cast",
+    "type": "Spell",
+    "class": "Purple",
+    "card_img": "Sacrifice_Doll.png"
+  },
+  {
+    "title": "Shadow Witch",
+    "description": "On Play: Summon a LvL2 minion from your GY.",
+    "health": 4,
+    "attack": 4,
+    "level": 5,
+    "cost": "Discard a spell",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Shadow_Witch.png"
+  },
+  {
+    "title": "Undead Crone",
+    "description": "On Play: Add a spell from your deck to your hand.",
+    "health": 5,
+    "attack": 3,
+    "level": 5,
+    "cost": "Discard a card",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Undead_Crone.png"
+  },
+  {
+    "title": "Vexis, the Exiled",
+    "description": "On Play: Opponent discards all cards from their hand.",
+    "health": 6,
+    "attack": 6,
+    "level": 9,
+    "cost": "Sacrifice two LvL5",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Vexis_the_Exiled.png"
+  },
+  {
+    "title": "Witch Ascend",
+    "description": "When you sacrifice one or more minions to cast a spell, tap this: Draw a card.",
+    "level": 1,
+    "cost": "Free Stage",
+    "type": "Stage",
+    "class": "Purple",
+    "card_img": "Witch_Ascend.png"
+  },
+  {
+    "title": "Witch Ritual",
+    "description": "Summon Vexis, the Exiled from your hand/deck/GY for free.",
+    "cost": "Sacrifice three LvL2",
+    "type": "Spell",
+    "class": "Purple",
+    "card_img": "Witch_Ritual.png"
+  },
+  {
+    "title": "Witch Wrath",
+    "description": "When your minion dies, repeat twice: Deal 2 damage to an enemy minion.",
+    "level": 2,
+    "cost": "Sacrifice a LvL1 Stage",
+    "type": "Stage",
+    "class": "Purple",
+    "card_img": "Witch_Wrath.png"
+  },
+  {
+    "title": "Xarion the Undying",
+    "description": "Death: Put 5 spells from your GY to the bottom of your deck in any order to resummon this.",
+    "health": 7,
+    "attack": 9,
+    "level": 9,
+    "cost": "Discard 5 spells",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Xarion_the_Undying.png"
+  },
+  {
+    "title": "Mystic Chamber",
+    "description": "When you cast a spell that sacrifices a LvL2, you can tap this, discard a card: Resummon it.",
+    "level": 1,
+    "cost": "Free Stage",
+    "type": "Stage",
+    "class": "Purple",
+    "card_img": "Mystic_Chamber.png"
+  },
+  {
+    "title": "Ritual Field",
+    "description": "When you sacrifice your 3rd minion this turn, tap this: Opponent sacrifices a minion.",
+    "level": 1,
+    "cost": "Free Stage",
+    "type": "Stage",
+    "class": "Purple",
+    "card_img": "Ritual_Field.png"
+  },
+  {
+    "title": "Bound Servant",
+    "description": "Death: If died by a spell, resummon this.",
+    "health": 5,
+    "attack": 5,
+    "level": 5,
+    "cost": "Discard a card",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Bound_Servant.png"
+  },
+  {
+    "title": "Dark Calling",
+    "description": "Summon a minion from your hand for free. Give it +1/+1 this turn for each minion sacrificed.",
+    "cost": "Sacrifice 3+ minions",
+    "type": "Spell",
+    "class": "Purple",
+    "card_img": "Dark_Calling.png"
+  },
+  {
+    "title": "Dark Grimoire",
+    "description": "Draw 4 cards.",
+    "cost": "Sacrifice 2 minions",
+    "type": "Spell",
+    "class": "Purple",
+    "card_img": "Dark_Grimoire.png"
+  },
+  {
+    "title": "Ethereal Citadel",
+    "description": "LvL4 or lower minions have -2 Attack.",
+    "level": 1,
+    "cost": "Free Stage",
+    "type": "Stage",
+    "class": "Purple",
+    "card_img": "Ethereal_Citadel.png"
+  },
+  {
+    "title": "Fireborn Familiar",
+    "description": "Death: If died by a spell, destroy an enemy minion.",
+    "health": 3,
+    "attack": 2,
+    "level": 2,
+    "cost": "Free Summon",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Fireborn_Familiar.png"
+  },
+  {
+    "title": "Moonlight Lady",
+    "description": "When you sacrifice another minion to cast a spell, draw a card for each.",
+    "health": 3,
+    "attack": 5,
+    "level": 5,
+    "cost": "Discard a card",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Moonlight_Lady.png"
+  },
+  {
+    "title": "Annihilation",
+    "description": "For each minion sacrificed, destroy an enemy minion.",
+    "cost": "Sacrifice 2+ minions",
+    "type": "Spell",
+    "class": "Purple",
+    "card_img": "Annihilation.png"
+  },
+  {
+    "title": "Arcane Familiar",
+    "description": "Death: If you cast a spell this turn, draw 2 cards.",
+    "health": 2,
+    "attack": 3,
+    "level": 2,
+    "cost": "Free Summon",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Arcane_Familiar.png"
+  },
+  {
+    "title": "Azgul, the Oblivion",
+    "description": "On Play: Opponent sacrifices 4 minions. For each they can't, draw a card.",
+    "health": 7,
+    "attack": 7,
+    "level": 9,
+    "cost": "Sacrifice LvL5 and 2 LvL2",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Azgul_the_Oblivion.png"
+  },
+  {
+    "title": "Baby Beholder",
+    "description": "When sacrificing this, treat it as two LvL2 minions.",
+    "health": 2,
+    "attack": 2,
+    "level": 2,
+    "cost": "Free Summon",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Baby_Beholder.png"
+  },
+  {
+    "title": "Zhar'kul, Death Lord",
+    "description": "Double Strike. Has +2/+2 for each minion that died this turn. On Play: Gain 2 Shields.",
+    "health": 6,
+    "attack": 6,
+    "level": 9,
+    "cost": "Sacrifice 4 minions",
+    "type": "Minion",
+    "class": "Purple",
+    "card_img": "Zharkul_Death_Lord.png"
+  },
+  {
+    "title": "Necrocircle",
+    "description": "Summon a LvL9 or lower minion from your GY for free.",
+    "cost": "Sacrifice 3 minions",
+    "type": "Spell",
+    "class": "Purple",
+    "card_img": "Necrocircle.png"
+  }
+]
