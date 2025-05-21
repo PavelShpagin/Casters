@@ -1,62 +1,71 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using System;
 
 public class QuestBoxUI : MonoBehaviour
 {
-    public Image background;
-    public Image border;
-    public Text descriptionText;
-    public Text amountText;
+    public Image innerImageBackground;
+    public TextMeshProUGUI descriptionText;
+    // public TextMeshProUGUI amountText; // REMOVED
     public Image gemIcon;
-    public Text gemAmountText;
+    public TextMeshProUGUI gemAmountText;
 
-    public Color normalBg = new Color(0.1f, 0.1f, 0.15f, 1f);
-    public Color completeBg = new Color(0.2f, 0.7f, 0.2f, 1f); // Green
-    public Color normalText = Color.white;
-    public Color completeText = Color.white;
+    public Color normalBgColor = new Color(0.1f, 0.1f, 0.15f, 1f);
+    public Color completeBgColor = new Color(0.2f, 0.7f, 0.2f, 1f); // Green
+    public Color normalTextColor = Color.white;
+    public Color completeTextColor = Color.white;
 
-    public LayoutElement innerImageLayoutElement; // Assign in Inspector
-    public RectTransform questDataRect;           // Assign in Inspector
+    [HideInInspector] public LayoutElement innerImageLayoutElement;
+    [HideInInspector] public RectTransform questDataRect;
 
     public void SetQuest(Quest quest)
     {
-        descriptionText.text = quest.description.Replace("{amount}", quest.requiredAmount.ToString());
-        amountText.text = $"({quest.currentAmount}/{quest.requiredAmount})";
-        gemAmountText.text = quest.gemReward.ToString();
-
-        if (quest.IsComplete)
+        if (descriptionText != null)
         {
-            background.color = completeBg;
-            descriptionText.color = completeText;
-            amountText.color = completeText;
-            gemAmountText.color = completeText;
+            // Use the base description and remove the "{amount}" placeholder if it exists,
+            // then append the progress.
+            string baseDescription = quest.description.Replace("({amount})", "").Trim(); // Remove placeholder and trim whitespace
+            string fullDescription = $"{baseDescription} ({quest.currentAmount}/{quest.requiredAmount})"; // Append progress
+            descriptionText.text = fullDescription;
         }
         else
         {
-            background.color = normalBg;
-            descriptionText.color = normalText;
-            amountText.color = normalText;
-            gemAmountText.color = normalText;
+            Debug.LogError("descriptionText not assigned in QuestBoxUI on " + gameObject.name, this);
         }
+        
+        if (gemAmountText != null)
+            gemAmountText.text = quest.gemReward.ToString();
+        else
+            Debug.LogError("gemAmountText not assigned in QuestBoxUI on " + gameObject.name, this);
+
+        if (innerImageBackground != null)
+        {
+            innerImageBackground.color = quest.IsComplete ? completeBgColor : normalBgColor;
+        }
+        else
+        {
+            Debug.LogError("innerImageBackground not assigned in QuestBoxUI on " + gameObject.name, this);
+        }
+
+        Color currentTextColor = quest.IsComplete ? completeTextColor : normalTextColor;
+        if (descriptionText != null) descriptionText.color = currentTextColor;
+        if (gemAmountText != null) gemAmountText.color = currentTextColor;
     }
 
     void LateUpdate()
     {
-        // Get the preferred height of the content (QuestData)
-        float contentHeight = LayoutUtility.GetPreferredHeight(questDataRect);
-
-        // Set the height of InnerImage to match content
-        if (innerImageLayoutElement != null)
+        if (questDataRect != null && innerImageLayoutElement != null)
         {
+            float contentHeight = LayoutUtility.GetPreferredHeight(questDataRect);
+
             innerImageLayoutElement.preferredHeight = contentHeight;
-        }
 
-        // Optionally, set the height of QuestBox itself (if needed)
-        var questBoxLayout = GetComponent<LayoutElement>();
-        if (questBoxLayout != null)
-        {
-            questBoxLayout.preferredHeight = contentHeight;
+            LayoutElement rootQuestBoxLayout = GetComponent<LayoutElement>();
+            if (rootQuestBoxLayout != null)
+            {
+                rootQuestBoxLayout.preferredHeight = contentHeight;
+            }
         }
     }
 }
