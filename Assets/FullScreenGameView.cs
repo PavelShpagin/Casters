@@ -5,53 +5,52 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-public class FullscreenGameWindow : EditorWindow
+/// <summary>
+/// Little utility for opening a "Game" view in fullscreen. Will be opened on whatever Unity thinks is the "main"
+/// monitor at the moment. The hotkey will toggle the window; however, if for some reason this breaks, fullscreen
+/// windows can be closed via Alt+F4 as long as the editor is not in play mode.
+/// </summary>
+/// <remarks>
+/// Confirmed to work in Unity 2019 and 2020. May work in earlier and later versions. No promises.
+/// </remarks>
+public static class FullscreenGameView
 {
     static readonly Type GameViewType = Type.GetType("UnityEditor.GameView,UnityEditor");
     static readonly PropertyInfo ShowToolbarProperty = GameViewType.GetProperty("showToolbar", BindingFlags.Instance | BindingFlags.NonPublic);
-    static readonly object False = false;
+    static readonly object False = false; // Only box once. This is a matter of principle.
 
-    static FullscreenGameWindow fullscreenWindow;
+    static EditorWindow instance;
 
     [MenuItem("Window/General/Game (Fullscreen) %#&2", priority = 2)]
     public static void Toggle()
     {
-        if (fullscreenWindow != null)
-        {
-            fullscreenWindow.Close();
-            fullscreenWindow = null;
-            return;
-        }
-
         if (GameViewType == null)
         {
             Debug.LogError("GameView type not found.");
             return;
         }
 
-        EditorWindow gameViewInstance = (EditorWindow)ScriptableObject.CreateInstance(GameViewType);
-        ShowToolbarProperty?.SetValue(gameViewInstance, False);
-
-        fullscreenWindow = CreateInstance<FullscreenGameWindow>();
-        fullscreenWindow.titleContent = new GUIContent("Game Fullscreen");
-        fullscreenWindow.position = new Rect(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
-        fullscreenWindow.ShowPopup();
-        fullscreenWindow.Focus();
-
-        // Embed the Game View into this window
-        gameViewInstance.ShowUtility();
-        gameViewInstance.Focus();
-    }
-
-    private void OnGUI()
-    {
-        // Press Escape to close
-        Event e = Event.current;
-        if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
+        if (ShowToolbarProperty == null)
         {
-            Close();
-            fullscreenWindow = null;
-            GUIUtility.ExitGUI();
+            Debug.LogWarning("GameView.showToolbar property not found.");
+        }
+
+        if (instance != null)
+        {
+            instance.Close();
+            instance = null;
+        }
+        else
+        {
+            instance = (EditorWindow) ScriptableObject.CreateInstance(GameViewType);
+
+            ShowToolbarProperty?.SetValue(instance, False);
+
+            var desktopResolution = new Vector2(Screen.currentResolution.width, Screen.currentResolution.height);
+            var fullscreenRect = new Rect(Vector2.zero, desktopResolution);
+            instance.ShowPopup();
+            instance.position = fullscreenRect;
+            instance.Focus();
         }
     }
 }
