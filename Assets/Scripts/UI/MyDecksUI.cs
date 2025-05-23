@@ -173,7 +173,16 @@ public class MyDecksUI : MonoBehaviour
         if (builderScript != null)
         {
             deckBuilderCanvas.SetActive(true); // Activate before loading
-            builderScript.LoadDeckForEditing(deckID);
+            Deck selectedDeck = DeckManager.Instance.GetDeck(deckID);
+            if (selectedDeck != null)
+            {
+                builderScript.DisplayDeckFromExternal(selectedDeck.uniqueID, selectedDeck.deckName);
+            }
+            else
+            {
+                Debug.LogError("Could not find the selected deck in DeckManager!");
+                myDecksCanvas.SetActive(true); // Go back to safety
+            }
         }
         else
         {
