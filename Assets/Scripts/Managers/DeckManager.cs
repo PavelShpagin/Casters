@@ -50,6 +50,15 @@ public class DeckManager : MonoBehaviour
 
     #region Deck Management Methods
 
+    public List<Deck> GetAllDecks()
+    {
+        if (currentUserDecks != null && currentUserDecks.allDecks != null)
+        {
+            return new List<Deck>(currentUserDecks.allDecks); // Return a copy
+        }
+        return new List<Deck>(); // Return an empty list if null
+    }
+
     public Deck CreateNewDeck(string deckName = "")
     {
         string nameToUse = string.IsNullOrEmpty(deckName) ? GetUniqueUntitledDeckName() : deckName;

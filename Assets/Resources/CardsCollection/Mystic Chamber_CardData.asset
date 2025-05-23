@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba08b56b8ad7ed443a91b6f23a2fc55c, type: 3}
+  m_Name: Mystic Chamber_CardData
+  m_EditorClassIdentifier: 
+  id: 9
+  title: Mystic Chamber
+  description: 'When you cast a spell that sacrifices a LvL2, you can tap this, discard
+    a card: Resummon it.'
+  cardType: 2
+  faction: 1
+  cost: Free Stage
+  attack: 0
+  health: 0
+  level: 1
+  cardImage: {fileID: 21300000, guid: 7b97a005f1a9b3e4b949d6824ae5ab82, type: 3}

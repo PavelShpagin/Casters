@@ -2,332 +2,395 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
+using System.Collections;
 
 public class DeckBuilderUI : MonoBehaviour
 {
-    [Header("Canvas References")]
-    public GameObject deckBuilderCanvas;
-    public GameObject myDecksCanvas;    
-    // public ConfirmationPopupUI confirmationPopup; // Assuming you have this
+    [Header("Main Canvases/Panels")]
+    public GameObject myDecksViewCanvas; // The main canvas for this UI
+    public GameObject cardCollectionPanel; // The panel on the right holding the card list & search
 
-    [Header("DeckBuilder UI Elements")]
-    public InputField deckNameInput;     
-    public Button backButton;          
-    public Button saveButton;          
-    public InputField searchInput;       
+    [Header("Deck List View (Left Panel)")]
+    public Transform decksGridContainer; // Parent for deck boxes and add button
+    public GameObject openedDeckViewPlaceholder; // Shows when a deck is "opened"
+
+    [Header("Card Collection (Right Panel)")]
+    public TMP_InputField searchInput; // Changed to TMP_InputField
     public Transform collectionContentParent; 
-    public Transform mainDeckContentParent;   
-    public Transform stageDeckContentParent;  
-    public Text mainDeckTitleText;      
-    public Text stageDeckTitleText;     
 
     [Header("Prefabs")]
     public GameObject cardItemPrefab;     
+    public GameObject deckAddItemPrefab; // For the "+" button
+    public GameObject deckBoxItemPrefab; // For individual deck representation
 
     // To keep track of instantiated card items in the collection for quick updates
-    private Dictionary<CardData, CardItemUI> collectionCardItems = new Dictionary<CardData, CardItemUI>();
-
-    private bool hasUnsavedChanges = false;
+    // We might not need CardItemUI if clicks on cards in collection do nothing for now
+    private List<GameObject> instantiatedCollectionCards = new List<GameObject>();
 
     void Start()
     {
-        if (!ValidateReferences())
+        Debug.Log("[DeckBuilderUI] Start() called.");
+
+        bool refsValid = ValidateCoreReferences();
+        Debug.Log("[DeckBuilderUI] ValidateCoreReferences() returned: " + refsValid);
+
+        if (!refsValid)
         {
+            if (myDecksViewCanvas != null) myDecksViewCanvas.SetActive(false);
             this.enabled = false;
+            Debug.LogError("[DeckBuilderUI] Core references invalid. Disabling script.");
             return;
         }
 
-        backButton.onClick.AddListener(OnBackButtonClicked);
-        saveButton.onClick.AddListener(OnSaveButtonClicked);
-        deckNameInput.onValueChanged.AddListener(MarkChanges); 
-        searchInput.onValueChanged.AddListener(FilterCollectionDisplay); 
+        if (searchInput != null)
+        {
+            searchInput.onValueChanged.AddListener(FilterCardCollectionDisplay);
+        }
 
-        if (deckBuilderCanvas.activeSelf) // If it starts active, ensure it's set up.
-        {
-             // This might happen if you are testing directly in this scene.
-             // Consider loading a default or new deck if DeckManager.currentEditingDeck is null.
-            if (DeckManager.Instance != null && DeckManager.Instance.currentEditingDeck == null)
-            {
-                // Create a dummy new deck for testing if no deck is loaded
-                DeckManager.Instance.StartEditingDeck(DeckManager.Instance.CreateNewDeck("Test Edit Deck").uniqueID);
-            }
-            RefreshAllDisplays();
-        }
-        else
-        {
-            gameObject.SetActive(false); 
-        }
+        ShowDeckListView();
+        Debug.Log("[DeckBuilderUI] About to call PopulateCardCollection().");
+        PopulateCardCollection();
     }
 
-    bool ValidateReferences()
+    bool ValidateCoreReferences()
     {
-        if (deckBuilderCanvas == null || myDecksCanvas == null || deckNameInput == null || backButton == null || 
-            saveButton == null || searchInput == null || collectionContentParent == null || mainDeckContentParent == null || 
-            stageDeckContentParent == null || cardItemPrefab == null || mainDeckTitleText == null || stageDeckTitleText == null)
-        {
-            Debug.LogError("DeckBuilderUI: One or more references are missing! Please assign them in the Inspector.");
-            return false;
-        }
+        Debug.Log("[DeckBuilderUI] Validating core references...");
+        bool allRefsValid = true;
+        if (myDecksViewCanvas == null) { Debug.LogError("DeckBuilderUI: MyDecksViewCanvas not assigned!"); allRefsValid = false; }
+        if (cardCollectionPanel == null) { Debug.LogError("DeckBuilderUI: CardCollectionPanel not assigned!"); allRefsValid = false; }
+        if (decksGridContainer == null) { Debug.LogError("DeckBuilderUI: DecksGridContainer not assigned!"); allRefsValid = false; }
+        if (openedDeckViewPlaceholder == null) { Debug.LogError("DeckBuilderUI: OpenedDeckViewPlaceholder not assigned!"); allRefsValid = false; }
+        if (searchInput == null) { Debug.LogError("DeckBuilderUI: SearchInput not assigned!"); allRefsValid = false; }
+        if (collectionContentParent == null) { Debug.LogError("DeckBuilderUI: CollectionContentParent not assigned!"); allRefsValid = false; }
+        if (cardItemPrefab == null) { Debug.LogError("DeckBuilderUI: CardItemPrefab not assigned!"); allRefsValid = false; }
+        if (deckAddItemPrefab == null) { Debug.LogError("DeckBuilderUI: DeckAddItemPrefab not assigned!"); allRefsValid = false; }
+        if (deckBoxItemPrefab == null) { Debug.LogError("DeckBuilderUI: DeckBoxItemPrefab not assigned!"); allRefsValid = false; }
+
         if (DeckManager.Instance == null)
         {
             Debug.LogError("DeckBuilderUI: DeckManager.Instance is not found. Ensure DeckManager is in your scene and initialized.");
-            return false;
+            allRefsValid = false;
         }
-        return true;
+        else
+        {
+            Debug.Log($"DeckBuilderUI: DeckManager found with {DeckManager.Instance.allMasterCardsList?.Count ?? 0} cards loaded.");
+        }
+        
+        Debug.Log($"DeckBuilderUI: Core references validation result: {allRefsValid}");
+        return allRefsValid;
     }
 
-    public void LoadDeckForEditing(string deckID)
+    void ShowDeckListView()
     {
-        if (DeckManager.Instance == null)
+        if (decksGridContainer != null) decksGridContainer.gameObject.SetActive(true);
+        if (openedDeckViewPlaceholder != null) openedDeckViewPlaceholder.SetActive(false);
+        PopulateDeckList();
+    }
+
+    void ShowOpenedDeckView(string deckNameContext)
+    {
+        if (decksGridContainer != null) decksGridContainer.gameObject.SetActive(false);
+        if (openedDeckViewPlaceholder != null)
         {
-            Debug.LogError("DeckManager instance not found when trying to load deck for editing.");
-            GoToMyDecks(); // Fallback
-            return;
+            openedDeckViewPlaceholder.SetActive(true);
+            // Optionally, display the deck name on the placeholder
+            TextMeshProUGUI placeholderText = openedDeckViewPlaceholder.GetComponentInChildren<TextMeshProUGUI>();
+            if (placeholderText != null)
+            {
+                placeholderText.text = $"Viewing: {deckNameContext}\n(Deck content area)";
+            }
+            else
+            {
+                 Text legacyText = openedDeckViewPlaceholder.GetComponentInChildren<Text>();
+                 if(legacyText != null) legacyText.text = $"Viewing: {deckNameContext}\n(Deck content area)";
+            }
+        }
+        // The card collection on the right remains visible and searchable
+    }
+
+    void PopulateDeckList()
+    {
+        if (DeckManager.Instance == null || decksGridContainer == null) return;
+
+        ClearContainer(decksGridContainer);
+
+        // 1. Instantiate the "Add New Deck" button
+        if (deckAddItemPrefab != null)
+        {
+            GameObject addItemGO = Instantiate(deckAddItemPrefab, decksGridContainer);
+            Button addBtn = addItemGO.GetComponent<Button>();
+            if (addBtn != null)
+            {
+                addBtn.onClick.RemoveAllListeners(); // Clear previous before adding
+                addBtn.onClick.AddListener(HandleAddNewDeckClicked);
+            }
+            else
+            {
+                Debug.LogWarning("DeckAddItemPrefab does not have a Button component.");
+            }
         }
 
-        DeckManager.Instance.StartEditingDeck(deckID); 
-
-        if (DeckManager.Instance.currentEditingDeck == null)
+        // 2. Instantiate a DeckBox for each saved deck
+        List<Deck> allDecks = DeckManager.Instance.GetAllDecks(); // Assuming DeckManager has such a method
+        if (allDecks == null)
         {
-            Debug.LogError($"Failed to start editing deck with ID: {deckID}. The deck might not exist or an error occurred.");
-            GoToMyDecks(); 
+            Debug.LogError("DeckManager.Instance.GetAllDecks() returned null.");
             return;
         }
         
-        deckNameInput.text = DeckManager.Instance.currentEditingDeck.deckName;
-        hasUnsavedChanges = false; 
-        searchInput.text = ""; // Clear search on new deck load
-
-        RefreshAllDisplays();
-        deckBuilderCanvas.SetActive(true); // Ensure this canvas is active
-    }
-
-    void RefreshAllDisplays()
-    {
-        PopulateCollection();
-        PopulateDeckDisplay();
-    }
-
-    void PopulateCollection()
-    {
-        if (DeckManager.Instance == null || cardItemPrefab == null) return;
-        
-        // Clear existing (but reuse GameObjects if you implement pooling later)
-        foreach (CardItemUI item in collectionCardItems.Values)
+        foreach (Deck savedDeckData in allDecks)
         {
-            if (item != null) Destroy(item.gameObject);
+            if (deckBoxItemPrefab == null) continue;
+
+            GameObject deckBoxGO = Instantiate(deckBoxItemPrefab, decksGridContainer);
+            deckBoxGO.name = "DeckBox_" + savedDeckData.deckName;
+
+            // Set the deck name (Attempt TextMeshProUGUI first, then fallback to Text)
+            TextMeshProUGUI tmpText = deckBoxGO.GetComponentInChildren<TextMeshProUGUI>();
+            if (tmpText != null)
+            {
+                tmpText.text = savedDeckData.deckName;
+            }
+            else
+            {
+                Text legacyText = deckBoxGO.GetComponentInChildren<Text>();
+                if (legacyText != null)
+                {
+                    legacyText.text = savedDeckData.deckName;
+                }
+                else
+                {
+                    // Debug.LogWarning($"DeckBoxItemPrefab '{deckBoxGO.name}' has no TextMeshProUGUI or Text component for the name.");
+                }
+            }
+
+            // Make the deck box clickable
+            Button button = deckBoxGO.GetComponent<Button>();
+            if (button == null) // If prefab doesn't have a button, add one
+            {
+                button = deckBoxGO.AddComponent<Button>();
+                // Optional: If you added a button, you might want to assign its Target Graphic
+                // Image img = deckBoxGO.GetComponent<Image>();
+                // if (img != null) button.targetGraphic = img;
+            }
+            
+            if (button != null)
+            {
+                string currentDeckID = savedDeckData.uniqueID; // Capture for the closure
+                string currentDeckName = savedDeckData.deckName;
+                button.onClick.RemoveAllListeners(); // Clear previous before adding
+                button.onClick.AddListener(() => HandleDeckSelected(currentDeckID, currentDeckName));
+            }
         }
-        collectionCardItems.Clear();
+    }
 
-        string filter = searchInput.text.ToLower();
+    void PopulateCardCollection(string filter = "")
+    {
+        if (DeckManager.Instance == null) { Debug.LogError("[DeckBuilderUI] DeckManager.Instance is null."); return; }
+        if (cardItemPrefab == null) { Debug.LogError("[DeckBuilderUI] cardItemPrefab is null."); return; }
+        if (collectionContentParent == null) { Debug.LogError("[DeckBuilderUI] collectionContentParent is null."); return; }
 
+        // CRITICAL: Verify we're using the correct parent object
+        if (collectionContentParent.name != "CardsGridContent")
+        {
+            Debug.LogError("[DeckBuilderUI] Wrong parent assigned! Please assign CardsGridContent to Collection Content Parent field in inspector!");
+            
+            // Try to find CardsGridContent automatically
+            Transform cardsGridContent = GameObject.Find("CardsGridContent")?.transform;
+            if (cardsGridContent != null)
+            {
+                Debug.Log("[DeckBuilderUI] Found CardsGridContent automatically. Using it instead.");
+                collectionContentParent = cardsGridContent;
+            }
+            else
+            {
+                Debug.LogError("[DeckBuilderUI] Could not find CardsGridContent object in scene!");
+                return;
+            }
+        }
+
+        // Configure GridLayoutGroup for 3-column layout with proper sizing
+        GridLayoutGroup gridLayout = collectionContentParent.GetComponent<GridLayoutGroup>();
+        if (gridLayout == null)
+        {
+            gridLayout = collectionContentParent.gameObject.AddComponent<GridLayoutGroup>();
+        }
+        
+        gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        gridLayout.constraintCount = 3; // Exactly 3 columns
+        gridLayout.cellSize = new Vector2(80f, 112f); // Card size that fits 3 columns nicely
+        gridLayout.spacing = new Vector2(5f, 5f); // Small spacing between cards
+        gridLayout.padding = new RectOffset(5, 5, 5, 5); // Small padding around edges
+        gridLayout.childAlignment = TextAnchor.UpperLeft; // Align to upper left
+        gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
+        gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal; // Fill horizontally first
+
+        // Configure ContentSizeFitter for proper scrolling
+        ContentSizeFitter sizeFitter = collectionContentParent.GetComponent<ContentSizeFitter>();
+        if (sizeFitter == null)
+        {
+            sizeFitter = collectionContentParent.gameObject.AddComponent<ContentSizeFitter>();
+        }
+        
+        sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        sizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        
+        // Configure scroll settings
+        ScrollRect scrollRect = collectionContentParent.GetComponentInParent<ScrollRect>();
+        if (scrollRect != null)
+        {
+            scrollRect.horizontal = false;
+            scrollRect.vertical = true;
+            scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+            scrollRect.horizontalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            scrollRect.scrollSensitivity = 25f;
+            
+            if (scrollRect.viewport != null)
+            {
+                Image viewportImage = scrollRect.viewport.GetComponent<Image>();
+                if (viewportImage == null)
+                {
+                    viewportImage = scrollRect.viewport.gameObject.AddComponent<Image>();
+                    viewportImage.color = new Color(0, 0, 0, 0.01f);
+                }
+                viewportImage.raycastTarget = true;
+            }
+        }
+
+        ClearContainer(collectionContentParent, instantiatedCollectionCards);
+
+        if (DeckManager.Instance.allMasterCardsList == null)
+        {
+             Debug.LogError("[DeckBuilderUI] DeckManager.Instance.allMasterCardsList is null.");
+             return;
+        }
+
+        string lowerFilter = string.IsNullOrEmpty(filter) ? "" : filter.ToLower();
+        int cardsProcessed = 0;
+        int cardsDisplayed = 0;
+        
         foreach (CardData card in DeckManager.Instance.allMasterCardsList.OrderBy(c => c.title))
         {
-            if (!string.IsNullOrEmpty(filter) && 
-                !card.title.ToLower().Contains(filter) && 
-                !card.description.ToLower().Contains(filter) &&
-                !card.cardType.ToString().ToLower().Contains(filter) &&
-                !card.faction.ToString().ToLower().Contains(filter))
+            cardsProcessed++;
+
+            // Filter cards based on search term
+            if (!string.IsNullOrEmpty(lowerFilter) &&
+                !card.title.ToLower().Contains(lowerFilter) &&
+                !(card.description != null && card.description.ToLower().Contains(lowerFilter)) &&
+                !card.cardType.ToString().ToLower().Contains(lowerFilter) &&
+                !card.faction.ToString().ToLower().Contains(lowerFilter))
             {
-                continue; 
+                continue; // Skip filtered cards
             }
 
             GameObject cardGO = Instantiate(cardItemPrefab, collectionContentParent);
+            if (cardGO == null)
+            {
+                Debug.LogError("[DeckBuilderUI] Failed to instantiate card: " + card.title);
+                continue;
+            }
+            
+            // Remove Layout Element if it exists to avoid conflicts with GridLayoutGroup
+            LayoutElement layoutElement = cardGO.GetComponent<LayoutElement>();
+            if (layoutElement != null)
+            {
+                DestroyImmediate(layoutElement);
+            }
+            
+            // DO NOT modify RectTransform - let GridLayoutGroup handle everything
+            instantiatedCollectionCards.Add(cardGO);
+
             CardItemUI cardUI = cardGO.GetComponent<CardItemUI>();
             if (cardUI != null)
             {
-                int countInDeck = DeckManager.Instance.GetCardCountInEditingDeck(card);
-                cardUI.SetupCard(card, countInDeck, CardLocation.Collection, AddCardToDeck);
-                collectionCardItems[card] = cardUI;
+                cardUI.SetupCard(card, 0, CardLocation.Collection, null);
             }
-        }
-    }
-
-    void PopulateDeckDisplay()
-    {
-        if (DeckManager.Instance == null || DeckManager.Instance.currentEditingDeck == null || cardItemPrefab == null) return;
-
-        ClearContainer(mainDeckContentParent);
-        ClearContainer(stageDeckContentParent);
-
-        // Populate Main Deck
-        foreach (KeyValuePair<CardData, int> entry in DeckManager.Instance.currentEditingDeck.mainDeckCards.OrderBy(kv => kv.Key.title))
-        {
-            for (int i = 0; i < entry.Value; i++) // Instantiate one UI item per card copy
+            else
             {
-                GameObject cardGO = Instantiate(cardItemPrefab, mainDeckContentParent);
-                CardItemUI cardUI = cardGO.GetComponent<CardItemUI>();
-                if (cardUI != null)
+                // Fallback: Set image directly
+                Image cardDisplayImage = cardGO.GetComponent<Image>();
+                if (cardDisplayImage != null && card.cardImage != null)
                 {
-                    // For deck display, count is implicitly 1 for this item, but SetupCard can take overall count for other uses
-                    cardUI.SetupCard(entry.Key, entry.Value, CardLocation.MainDeck, RemoveCardFromDeck);
+                    cardDisplayImage.sprite = card.cardImage;
                 }
             }
+            
+            cardsDisplayed++;
         }
-
-        // Populate Stage Deck
-        foreach (KeyValuePair<CardData, int> entry in DeckManager.Instance.currentEditingDeck.stageDeckCards.OrderBy(kv => kv.Key.title))
-        {
-             for (int i = 0; i < entry.Value; i++)
-            {
-                GameObject cardGO = Instantiate(cardItemPrefab, stageDeckContentParent);
-                CardItemUI cardUI = cardGO.GetComponent<CardItemUI>();
-                if (cardUI != null)
-                {
-                    cardUI.SetupCard(entry.Key, entry.Value, CardLocation.StageDeck, RemoveCardFromDeck);
-                }
-            }
-        }
-        UpdateDeckCountTitles();
+        
+        // Only show summary in console
+        Debug.Log($"[DeckBuilderUI] PopulateCardCollection completed. Processed: {cardsProcessed}, Displayed: {cardsDisplayed}, Filter: '{filter}'");
+        
+        // Force layout refresh after population (safely)
+        StartCoroutine(RefreshLayoutNextFrame());
     }
-
-    void UpdateDeckCountTitles()
+    
+    private System.Collections.IEnumerator RefreshLayoutNextFrame()
     {
-        if (DeckManager.Instance == null || DeckManager.Instance.currentEditingDeck == null) return;
-        int mainDeckCount = DeckManager.Instance.GetTotalCardCountInEditingDeck(true);
-        int stageDeckCount = DeckManager.Instance.GetTotalCardCountInEditingDeck(false);
-        mainDeckTitleText.text = $"Main Deck ({mainDeckCount}/{Deck.MAX_MAIN_DECK_SIZE})";
-        stageDeckTitleText.text = $"Stage Deck ({stageDeckCount}/{Deck.MAX_STAGE_DECK_SIZE})";
-    }
-
-
-    void FilterCollectionDisplay(string searchTerm)
-    {
-        PopulateCollection(); 
-    }
-
-    void AddCardToDeck(CardData card)
-    {
-        if (DeckManager.Instance == null) return;
-
-        bool added = DeckManager.Instance.AddCardToEditingDeck(card);
-        if (added)
+        yield return null; // Wait one frame
+        if (collectionContentParent != null)
         {
-            MarkChanges();
-            PopulateDeckDisplay(); // Refresh deck view
-            // Update only the specific card in collection view for efficiency
-            if (collectionCardItems.TryGetValue(card, out CardItemUI cardUI))
-            {
-                cardUI.UpdateCollectionItemCount(DeckManager.Instance.GetCardCountInEditingDeck(card));
-            }
-            UpdateDeckCountTitles();
-        }
-        else
-        {
-            // Debug.Log($"Could not add card {card.title} (deck full or max copies reached).");
-            // Optionally provide user feedback (e.g., UI indication, sound)
-            // The CardItemUI itself should visually indicate if it can't be added.
+            Canvas.ForceUpdateCanvases();
         }
     }
 
-    void RemoveCardFromDeck(CardData card)
+    void FilterCardCollectionDisplay(string searchTerm)
+    {
+        PopulateCardCollection(searchTerm);
+    }
+
+    void HandleDeckSelected(string deckID, string deckName)
+    {
+        Debug.Log($"Deck selected: {deckName} (ID: {deckID})");
+        // Here, you could use DeckManager to set this as a "currently viewed" deck
+        // DeckManager.Instance.SetCurrentlyViewedDeck(deckID); // Hypothetical method
+        ShowOpenedDeckView(deckName);
+    }
+
+    void HandleAddNewDeckClicked()
     {
         if (DeckManager.Instance == null) return;
 
-        bool removed = DeckManager.Instance.RemoveCardFromEditingDeck(card);
-        if (removed)
+        // Create a new deck (DeckManager should handle unique naming if needed)
+        int nextDeckNumber = (DeckManager.Instance.GetAllDecks()?.Count ?? 0) + 1;
+        Deck newDeck = DeckManager.Instance.CreateNewDeck($"Untitled Deck {nextDeckNumber}");
+
+        if (newDeck != null)
         {
-            MarkChanges();
-            PopulateDeckDisplay(); // Refresh deck view
-            if (collectionCardItems.TryGetValue(card, out CardItemUI cardUI))
-            {
-                cardUI.UpdateCollectionItemCount(DeckManager.Instance.GetCardCountInEditingDeck(card));
-            }
-            UpdateDeckCountTitles();
-        }
-    }
-
-    void ClearContainer(Transform container)
-    {
-        foreach (Transform child in container)
-        {
-            Destroy(child.gameObject);
-        }
-    }
-
-    void MarkChanges(string _ = null) 
-    {
-        hasUnsavedChanges = true;
-        // Optional: Visual cue for unsaved changes (e.g., asterisk on save button)
-        if(saveButton != null) saveButton.GetComponentInChildren<Text>().text = "Save*";
-    }
-
-    void OnSaveButtonClicked()
-    {
-        if (DeckManager.Instance == null) return;
-
-        string newName = deckNameInput.text;
-        if (string.IsNullOrWhiteSpace(newName))
-        {
-            Debug.LogError("Deck name cannot be empty!");
-            // TODO: Show user feedback (e.g., highlight input field, popup)
-            return;
-        }
-
-        bool saved = DeckManager.Instance.SaveEditedDeck(newName); 
-
-        if (saved)
-        {
-            hasUnsavedChanges = false;
-            if(saveButton != null) saveButton.GetComponentInChildren<Text>().text = "Save";
-            Debug.Log("Deck saved successfully!");
-            GoToMyDecks(); 
+            Debug.Log($"New deck created: {newDeck.deckName} (ID: {newDeck.uniqueID})");
+            PopulateDeckList(); // Refresh the list to show the new deck
+            HandleDeckSelected(newDeck.uniqueID, newDeck.deckName); // Immediately "open" it
         }
         else
         {
-            Debug.LogError("Failed to save deck. Name might be taken or another error occurred.");
-            // TODO: Provide user feedback (e.g., popup)
+            Debug.LogError("Failed to create a new deck via DeckManager.");
         }
     }
 
-    void OnBackButtonClicked()
+    void ClearContainer(Transform container, List<GameObject> trackingList = null)
     {
-        if (hasUnsavedChanges)
+        if (trackingList != null)
         {
-            // TODO: Implement a proper confirmation popup
-            // For now, we'll use a simple Unity confirm dialog if in Editor, or just discard
-            bool discard = true;
-            #if UNITY_EDITOR
-            discard = UnityEditor.EditorUtility.DisplayDialog(
-                "Unsaved Changes",
-                "You have unsaved changes. Are you sure you want to discard them and go back?",
-                "Discard", "Cancel"
-            );
-            #endif
-
-            if (discard)
+            foreach (GameObject go in trackingList)
             {
-                ConfirmDiscardAndGoBack();
+                if (go != null) Destroy(go);
             }
+            trackingList.Clear();
         }
         else
         {
-            GoToMyDecks(); 
-        }
-    }
-
-    void ConfirmDiscardAndGoBack()
-    {
-        if(DeckManager.Instance != null)
-        {
-             DeckManager.Instance.DiscardDeckChanges();
-        }
-        hasUnsavedChanges = false;
-        if(saveButton != null) saveButton.GetComponentInChildren<Text>().text = "Save";
-        GoToMyDecks();
-    }
-
-    void GoToMyDecks()
-    {
-        if (deckBuilderCanvas != null) deckBuilderCanvas.SetActive(false);
-        if (myDecksCanvas != null) 
-        {
-            myDecksCanvas.SetActive(true);
-            MyDecksUI myDecksUIScript = myDecksCanvas.GetComponent<MyDecksUI>();
-            if (myDecksUIScript != null) 
+            foreach (Transform child in container)
             {
-                 myDecksUIScript.RefreshDisplay(); // Ensure deck list is up-to-date
+                if (child != null) Destroy(child.gameObject);
             }
         }
+    }
+
+    public void DisplayDeckFromExternal(string deckID, string deckName)
+    {
+        // This method can be called by MyDecksUI or other scripts
+        Debug.Log($"DeckBuilderUI: External request to display deck: {deckName} (ID: {deckID})");
+        HandleDeckSelected(deckID, deckName); // Use existing internal logic
     }
 } 

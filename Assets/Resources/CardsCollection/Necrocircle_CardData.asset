@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba08b56b8ad7ed443a91b6f23a2fc55c, type: 3}
+  m_Name: Necrocircle_CardData
+  m_EditorClassIdentifier: 
+  id: 22
+  title: Necrocircle
+  description: Summon a LvL9 or lower minion from your GY for free.
+  cardType: 0
+  faction: 1
+  cost: Sacrifice 3 minions
+  attack: 0
+  health: 0
+  level: 0
+  cardImage: {fileID: 21300000, guid: 5fb6daa8301b56d46a31e69d92b1bcdc, type: 3}

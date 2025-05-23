@@ -13,7 +13,7 @@ public class CardData : ScriptableObject
     public CardFaction faction = CardFaction.Neutral;
 
     [Header("Stats")]
-    public int cost; // Could be "Free Summon" or a numeric value. Consider how to handle this.
+    public string cost; // CHANGED from int to string
                      // For simplicity now, let's assume int. You might need a string or a more complex type later.
     public int attack = 0; // Only relevant for Minions
     public int health = 0; // Relevant for Minions and potentially some Stages
