@@ -8,8 +8,15 @@ public class DeckManager : MonoBehaviour
     public static DeckManager Instance { get; private set; }
 
     public UserDecks currentUserDecks = new UserDecks();
+    public PlayerCollection playerCollection = new PlayerCollection();
+    
+    // Current deck management
+    public string currentSelectedDeckID = "";
+    
     private string saveFileName = "userDecks.json";
+    private string collectionSaveFileName = "playerCollection.json";
     private string SavePath => Path.Combine(Application.persistentDataPath, saveFileName);
+    private string CollectionSavePath => Path.Combine(Application.persistentDataPath, collectionSaveFileName);
 
     // This would hold all available cards in the game, loaded from ScriptableObjects
     public List<CardData> allMasterCardsList = new List<CardData>();
@@ -45,6 +52,14 @@ public class DeckManager : MonoBehaviour
         if (allMasterCardsList.Count == 0)
         {
             Debug.LogWarning("No CardData assets found in Resources/CardsCollection. Make sure they are there and correctly configured.");
+        }
+        
+        // Initialize player collection with all cards (2 copies each for now)
+        LoadPlayerCollection();
+        if (playerCollection.ownedCards.Count == 0)
+        {
+            playerCollection.InitializeWithAllCards(allMasterCardsList, 2);
+            SavePlayerCollection();
         }
     }
 
@@ -251,6 +266,34 @@ public class DeckManager : MonoBehaviour
         return null; // Should ideally not be reached if logic is sound
     }
 
+    public void SetCurrentSelectedDeck(string deckID)
+    {
+        if (GetDeck(deckID) != null)
+        {
+            currentSelectedDeckID = deckID;
+            Debug.Log($"Current selected deck set to: {GetDeck(deckID).deckName} (ID: {deckID})");
+            SaveDecks(); // Save the current selection
+        }
+        else
+        {
+            Debug.LogError($"Cannot set current deck - deck with ID {deckID} not found");
+        }
+    }
+
+    public Deck GetCurrentSelectedDeck()
+    {
+        if (!string.IsNullOrEmpty(currentSelectedDeckID))
+        {
+            return GetDeck(currentSelectedDeckID);
+        }
+        return null;
+    }
+
+    public string GetCurrentSelectedDeckID()
+    {
+        return currentSelectedDeckID;
+    }
+
     #endregion
 
     #region Card Management in Editing Deck
@@ -346,7 +389,11 @@ public class DeckManager : MonoBehaviour
     {
         try
         {
-            string json = JsonUtility.ToJson(currentUserDecks, true);
+            // Convert to serializable format
+            var serializableDecks = new SerializableUserDecks();
+            serializableDecks.FromUserDecks(currentUserDecks, allMasterCardsList);
+            
+            string json = JsonUtility.ToJson(serializableDecks, true);
             File.WriteAllText(SavePath, json);
             Debug.Log("Decks saved successfully to: " + SavePath);
         }
@@ -363,24 +410,14 @@ public class DeckManager : MonoBehaviour
             try
             {
                 string json = File.ReadAllText(SavePath);
-                currentUserDecks = JsonUtility.FromJson<UserDecks>(json);
-                if (currentUserDecks == null) // Handle case where JSON might be malformed or empty
+                var serializableDecks = JsonUtility.FromJson<SerializableUserDecks>(json);
+                if (serializableDecks != null)
+                {
+                    currentUserDecks = serializableDecks.ToUserDecks(allMasterCardsList);
+                }
+                else
                 {
                     currentUserDecks = new UserDecks();
-                }
-                // JsonUtility doesn't directly serialize/deserialize Dictionaries with non-basic keys well.
-                // We need to re-initialize them and repopulate if CardData references were lost or became null.
-                // This is a common issue with ScriptableObject references in JSON.
-                // For a robust solution, you might need custom serialization or a different format.
-                // For now, let's assume CardData IDs are saved and we re-link them.
-                // This part is simplified and might need significant enhancement for SO references:
-                foreach (var deck in currentUserDecks.allDecks)
-                {
-                    // Re-linking logic would go here if CardData objects are not directly deserialized.
-                    // E.g., if you save card IDs and then re-fetch CardData from allMasterCardsList.
-                    // For now, this basic load assumes direct deserialization works or that dictionaries are empty and will be repopulated.
-                    if (deck.mainDeckCards == null) deck.mainDeckCards = new Dictionary<CardData, int>();
-                    if (deck.stageDeckCards == null) deck.stageDeckCards = new Dictionary<CardData, int>();
                 }
                 Debug.Log("Decks loaded successfully from: " + SavePath);
             }
@@ -397,4 +434,216 @@ public class DeckManager : MonoBehaviour
         }
     }
     #endregion
+
+    #region Player Collection Management
+    
+    public int GetPlayerCardCount(CardData card)
+    {
+        return playerCollection.GetCardCount(card);
+    }
+    
+    public void SavePlayerCollection()
+    {
+        try
+        {
+            // Since Unity's JsonUtility doesn't serialize Dictionaries directly,
+            // we need a serializable wrapper
+            var serializableCollection = new SerializablePlayerCollection();
+            serializableCollection.FromPlayerCollection(playerCollection, allMasterCardsList);
+            
+            string json = JsonUtility.ToJson(serializableCollection, true);
+            File.WriteAllText(CollectionSavePath, json);
+            Debug.Log($"Player collection saved to: {CollectionSavePath}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error saving player collection: {e.Message}");
+        }
+    }
+    
+    public void LoadPlayerCollection()
+    {
+        try
+        {
+            if (File.Exists(CollectionSavePath))
+            {
+                string json = File.ReadAllText(CollectionSavePath);
+                var serializableCollection = JsonUtility.FromJson<SerializablePlayerCollection>(json);
+                playerCollection = serializableCollection.ToPlayerCollection(allMasterCardsList);
+                Debug.Log($"Player collection loaded from: {CollectionSavePath}");
+            }
+            else
+            {
+                Debug.Log("No saved player collection found. Will initialize with defaults.");
+                playerCollection = new PlayerCollection();
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error loading player collection: {e.Message}");
+            playerCollection = new PlayerCollection();
+        }
+    }
+    
+    #endregion
+}
+
+// Helper class for serializing player collection
+[System.Serializable]
+public class SerializablePlayerCollection
+{
+    public List<int> cardIds = new List<int>();
+    public List<int> cardCounts = new List<int>();
+    
+    public void FromPlayerCollection(PlayerCollection collection, List<CardData> allCards)
+    {
+        cardIds.Clear();
+        cardCounts.Clear();
+        
+        foreach (var kvp in collection.ownedCards)
+        {
+            // Find the index of this card in the master list
+            int cardIndex = allCards.IndexOf(kvp.Key);
+            if (cardIndex >= 0)
+            {
+                cardIds.Add(kvp.Key.id); // Use the card's ID instead of index
+                cardCounts.Add(kvp.Value);
+            }
+        }
+    }
+    
+    public PlayerCollection ToPlayerCollection(List<CardData> allCards)
+    {
+        var collection = new PlayerCollection();
+        
+        for (int i = 0; i < cardIds.Count && i < cardCounts.Count; i++)
+        {
+            // Find card by ID
+            CardData card = allCards.FirstOrDefault(c => c.id == cardIds[i]);
+            if (card != null)
+            {
+                collection.SetCardCount(card, cardCounts[i]);
+            }
+        }
+        
+        return collection;
+    }
+} 
+
+// Helper classes for serializing decks with card IDs instead of CardData references
+[System.Serializable]
+public class SerializableUserDecks
+{
+    public List<SerializableDeck> allDecks = new List<SerializableDeck>();
+    public string currentSelectedDeckID = "";
+    
+    public void FromUserDecks(UserDecks userDecks, List<CardData> allCards)
+    {
+        allDecks.Clear();
+        
+        foreach (var deck in userDecks.allDecks)
+        {
+            var serializableDeck = new SerializableDeck();
+            serializableDeck.FromDeck(deck, allCards);
+            allDecks.Add(serializableDeck);
+        }
+        
+        // Include current selected deck ID
+        if (DeckManager.Instance != null)
+        {
+            currentSelectedDeckID = DeckManager.Instance.currentSelectedDeckID;
+        }
+    }
+    
+    public UserDecks ToUserDecks(List<CardData> allCards)
+    {
+        var userDecks = new UserDecks();
+        
+        foreach (var serializableDeck in allDecks)
+        {
+            var deck = serializableDeck.ToDeck(allCards);
+            if (deck != null)
+            {
+                userDecks.allDecks.Add(deck);
+            }
+        }
+        
+        // Restore current selected deck ID
+        if (DeckManager.Instance != null)
+        {
+            DeckManager.Instance.currentSelectedDeckID = currentSelectedDeckID;
+        }
+        
+        return userDecks;
+    }
+}
+
+[System.Serializable]
+public class SerializableDeck
+{
+    public string deckName;
+    public string uniqueID;
+    public List<int> mainDeckCardIds = new List<int>();
+    public List<int> mainDeckCardCounts = new List<int>();
+    public List<int> stageDeckCardIds = new List<int>();
+    public List<int> stageDeckCardCounts = new List<int>();
+    
+    public void FromDeck(Deck deck, List<CardData> allCards)
+    {
+        deckName = deck.deckName;
+        uniqueID = deck.uniqueID;
+        
+        // Clear existing data
+        mainDeckCardIds.Clear();
+        mainDeckCardCounts.Clear();
+        stageDeckCardIds.Clear();
+        stageDeckCardCounts.Clear();
+        
+        // Serialize main deck cards
+        foreach (var kvp in deck.mainDeckCards)
+        {
+            if (kvp.Key != null)
+            {
+                mainDeckCardIds.Add(kvp.Key.id);
+                mainDeckCardCounts.Add(kvp.Value);
+            }
+        }
+        
+        // Serialize stage deck cards
+        foreach (var kvp in deck.stageDeckCards)
+        {
+            if (kvp.Key != null)
+            {
+                stageDeckCardIds.Add(kvp.Key.id);
+                stageDeckCardCounts.Add(kvp.Value);
+            }
+        }
+    }
+    
+    public Deck ToDeck(List<CardData> allCards)
+    {
+        var deck = new Deck(deckName, uniqueID);
+        
+        // Deserialize main deck cards
+        for (int i = 0; i < mainDeckCardIds.Count && i < mainDeckCardCounts.Count; i++)
+        {
+            CardData card = allCards.FirstOrDefault(c => c.id == mainDeckCardIds[i]);
+            if (card != null)
+            {
+                deck.mainDeckCards[card] = mainDeckCardCounts[i];
+            }
+        }
+        
+        // Deserialize stage deck cards
+        for (int i = 0; i < stageDeckCardIds.Count && i < stageDeckCardCounts.Count; i++)
+        {
+            CardData card = allCards.FirstOrDefault(c => c.id == stageDeckCardIds[i]);
+            if (card != null)
+            {
+                deck.stageDeckCards[card] = stageDeckCardCounts[i];
+            }
+        }
+        
+        return deck;
+    }
 } 

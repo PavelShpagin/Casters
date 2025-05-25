@@ -87,49 +87,77 @@ public class MainMenuController : MonoBehaviour
         UpdateUI();
     }
 
-    void UpdateUI()
+    public void UpdateUI()
     {
-        // Explicitly handle Play and Deck screens
-        if (playScreenContent != null)
+        Debug.Log($"[MainMenuController] UpdateUI called for scene: {currentScene}");
+
+        // Deactivate all primary content panels first
+        if (playScreenContent != null) playScreenContent.SetActive(false);
+        if (deckScreenContent != null) deckScreenContent.SetActive(false);
+        foreach (GameObject panel in panels)
         {
-            playScreenContent.SetActive(currentScene == SceneType.Play);
-        }
-        else if (currentScene == SceneType.Play)
-        {
-            Debug.LogWarning("MainMenuController: playScreenContent is not assigned!");
+            if (panel != null) panel.SetActive(false);
         }
 
-        if (deckScreenContent != null)
+        // Activate the correct panel based on currentScene
+        switch (currentScene)
         {
-            deckScreenContent.SetActive(currentScene == SceneType.Deck);
-        }
-        else if (currentScene == SceneType.Deck)
-        {
-            Debug.LogWarning("MainMenuController: deckScreenContent is not assigned!");
-        }
-
-        // Handle other panels from the list (e.g., Solo, Shop)
-        // Start from index 2 as Play (0) and Deck (1) are handled above
-        for (int i = 2; i < System.Enum.GetValues(typeof(SceneType)).Length; i++)
-        {
-            bool isActivePanel = (i == (int)currentScene);
-            // Adjust index for the 'panels' list if it's used for scenes beyond Play/Deck
-            // E.g. if Solo is SceneType index 2, it might be panels[0] if panels only holds Solo, Shop etc.
-            // For now, let's assume panels list aligns directly if populated for SceneType indices 2+
-            int panelListIndex = i; // This assumes panels[0] is for Play, panels[1] for Deck etc. if those specific fields weren't used.
-                                  // Or more robustly, if panels list is *only* for scenes *after* Play and Deck:
-            // int panelListIndex = i - 2; // if panels[0] is Solo, panels[1] is Shop etc.
-
-            // Let's make it simple: if panels list is used, it must correspond to SceneType index directly
-            // but we skip 0 and 1 as they are handled by specific fields.
-            if (i < panels.Count && panels[i] != null) // Check if a panel is assigned for this SceneType index
-            {
-                 panels[i].SetActive(isActivePanel);
-            }
-            else if (isActivePanel)
-            {
-                 Debug.LogWarning($"MainMenuController: Panel for scene {(SceneType)i} (index {i}) is not assigned in the 'panels' list (or specific field), or the list is too short.");
-            }
+            case SceneType.Play:
+                if (playScreenContent != null) {
+                    Debug.Log("[MainMenuController] Activating playScreenContent.");
+                    playScreenContent.SetActive(true);
+                }
+                else Debug.LogWarning("MainMenuController: playScreenContent is not assigned!");
+                break;
+            case SceneType.Deck:
+                if (deckScreenContent != null) {
+                    Debug.Log("[MainMenuController] Activating deckScreenContent.");
+                    deckScreenContent.SetActive(true);
+                }
+                else Debug.LogWarning("MainMenuController: deckScreenContent is not assigned!");
+                break;
+            case SceneType.Solo:
+                // Assuming Solo corresponds to panels[0] if panels is used for scenes beyond Play/Deck
+                // or panels[2] if panels list aligns directly with SceneType enum indices starting from 0.
+                // For safety, let's use an index that would correspond to SceneType.Solo (index 2).
+                // This part needs to align with how 'panels' list is intended to be used.
+                // If 'panels' strictly holds Solo, Shop, etc., then index might be (int)currentScene - 2.
+                // For now, using direct mapping for SceneType indices 2 and 3 if panels has them.
+                if ((int)currentScene < panels.Count && panels[(int)currentScene] != null)
+                {
+                    Debug.Log($"[MainMenuController] Activating panel for {currentScene}: {panels[(int)currentScene].name}");
+                    panels[(int)currentScene].SetActive(true);
+                }
+                else if (panels.Count > 0 && (int)currentScene == 2 && panels.Count > (int)SceneType.Solo - 2 && panels[(int)SceneType.Solo -2] != null ) // A common pattern: panels[0] = Solo, panels[1] = Shop
+                {
+                     Debug.Log($"[MainMenuController] Activating panel for {currentScene} (index {(int)SceneType.Solo -2}): {panels[(int)SceneType.Solo -2].name}");
+                     panels[(int)SceneType.Solo -2].SetActive(true); // Example: Solo is SceneType index 2, panels[0]
+                }
+                else
+                {
+                    Debug.LogWarning($"MainMenuController: Panel for scene {currentScene} (index {(int)currentScene}) is not assigned or panels list misconfigured.");
+                }
+                break;
+            case SceneType.Shop:
+                 if ((int)currentScene < panels.Count && panels[(int)currentScene] != null)
+                {
+                    Debug.Log($"[MainMenuController] Activating panel for {currentScene}: {panels[(int)currentScene].name}");
+                    panels[(int)currentScene].SetActive(true);
+                }
+                // Example: Shop is SceneType index 3, panels[1]
+                else if (panels.Count > 1 && (int)currentScene == 3 && panels.Count > (int)SceneType.Shop - 2 && panels[(int)SceneType.Shop -2] != null )
+                {
+                     Debug.Log($"[MainMenuController] Activating panel for {currentScene} (index {(int)SceneType.Shop -2}): {panels[(int)SceneType.Shop -2].name}");
+                     panels[(int)SceneType.Shop -2].SetActive(true); 
+                }
+                else
+                {
+                    Debug.LogWarning($"MainMenuController: Panel for scene {currentScene} (index {(int)currentScene}) is not assigned or panels list misconfigured.");
+                }
+                break;
+            default:
+                Debug.LogWarning($"MainMenuController: Unhandled scene type: {currentScene}");
+                break;
         }
 
         // Update button visuals (same as before)

@@ -89,14 +89,16 @@ public class DeckBuilderGenerator : EditorWindow
         saveBtnLE.flexibleWidth = 0;
         saveBtnLE.minWidth = 90;
 
-        // --- MAIN HORIZONTAL LAYOUT (anchored below top bar) ---
+        // --- MAIN HORIZONTAL LAYOUT (properly constrained to canvas bounds) ---
         GameObject mainLayoutGO = CreatePanel(deckBuilderCanvasGO.transform, "MainLayout_Builder", Color.clear, false, false);
         RectTransform mainLayoutRT = mainLayoutGO.GetComponent<RectTransform>();
         mainLayoutRT.anchorMin = new Vector2(0, 0);
         mainLayoutRT.anchorMax = new Vector2(1, 1);
         mainLayoutRT.pivot = new Vector2(0.5f, 0.5f);
-        mainLayoutRT.offsetMin = new Vector2(0, 0);
-        mainLayoutRT.offsetMax = new Vector2(0, -60); // Leave space for top bar
+        mainLayoutRT.offsetMin = new Vector2(0, 0);        // Bottom constraint to screen edge
+        mainLayoutRT.offsetMax = new Vector2(0, -60);      // Top constraint with proper top bar space
+        mainLayoutRT.anchoredPosition = Vector2.zero;
+        mainLayoutRT.sizeDelta = Vector2.zero;
 
         HorizontalLayoutGroup mainHLG = mainLayoutGO.AddComponent<HorizontalLayoutGroup>();
         mainHLG.padding = new RectOffset(PADDING_M, PADDING_M, PADDING_M, PADDING_M);
