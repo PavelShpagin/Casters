@@ -232,7 +232,7 @@ public class MainMenuUIGenerator : EditorWindow
         tmp.fontSize = 22;
         tmp.color = completed ? SUBTLE_TEXT_COLOR : TEXT_COLOR;
         tmp.alignment = TextAlignmentOptions.MidlineLeft;
-        tmp.enableWordWrapping = false;
+        tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
         tmp.overflowMode = TextOverflowModes.Ellipsis;
         LayoutElement textLE = textGO.AddComponent<LayoutElement>();
         textLE.flexibleWidth = 1;
